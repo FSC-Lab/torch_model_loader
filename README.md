@@ -6,15 +6,6 @@ A ROS 2 package for real-time PyTorch neural network inference.
 
 This package provides an example for loading and running PyTorch models within the ROS 2 ecosystem. It accepts 3D vector inputs via ROS messages and publishes model predictions, supporting both CPU and CUDA inference with automatic device detection.
 
-## Prerequisites
-
-- **ROS 2** (Humble/Iron/Rolling)
-- **PyTorch C++** (LibTorch)
-- **Eigen3** - for linear algebra
-- **CMake** 3.8+
-- **C++17** compiler
-
-
 ## Installation
 
 1. Update the **path of the LibTorch** in `CMakeLists.txt`
