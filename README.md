@@ -83,6 +83,15 @@ float32[5] model_output
 | `/minimal_publisher` | `geometry_msgs/Vector3Stamped` | Input 3D vectors for inference |
 | `/model_output_data` | `network_loader/Model` | Model predictions |
 
+## Debug
+### `libc10.so` not found errors
+If the following error is reported `error while loading shared libraries: libc10.so: cannot open shared object file: No such file or directory`. You need to manually add the torch lib to the environment variable `LD_LIBRARY_PATH`
+```bash
+export LD_LIBRARY_PATH=/home/orin2/venv/lib/python3.10/site-packages/torch/lib:$LD_LIBRARY_PATH
+source ~/.bashrc
+```
+
+
 ## Development
 
 ### Building from Source
