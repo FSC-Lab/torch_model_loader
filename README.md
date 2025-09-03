@@ -87,7 +87,7 @@ float32[5] model_output
 ### `libc10.so` not found errors
 If the following error is reported `error while loading shared libraries: libc10.so: cannot open shared object file: No such file or directory`. You need to manually add the torch lib to the environment variable `LD_LIBRARY_PATH`
 ```bash
-export LD_LIBRARY_PATH=/home/orin2/venv/lib/python3.10/site-packages/torch/lib:$LD_LIBRARY_PATH
+export LD_LIBRARY_PATH=${your_python_path}/site-packages/torch/lib:$LD_LIBRARY_PATH
 source ~/.bashrc
 ```
 
