@@ -13,11 +13,20 @@ This package provides an example for loading and running PyTorch models within t
 list(APPEND CMAKE_PREFIX_PATH "${your_python_path}/site-packages/torch/share/cmake")
 find_package(Torch REQUIRED)
 ```
+If using the base python and not in orin need to set where to look for enviroment
+```
+unset CMAKE_PREFIX_PATH
+export AMENT_PYTHON_EXECUTABLE=/usr/bin/python3
+```
 
 3. **Build the package**:
 ```bash
 colcon build --packages-select network_loader
 source install/setup.bash
+```
+If building in base and not orin need to set enviroment path
+```
+colcon build --cmake-args -DPython3_EXECUTABLE=/usr/bin/python3 --packages-select network_loader
 ```
 
 ## Usage
