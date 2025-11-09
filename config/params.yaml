@@ -1,7 +1,9 @@
 model_loader: # must much the node name in launch file
   ros__parameters:
-    model_name: "array_net_model"
-    model_path: "/home/kunwu/Documents/ros_ws/src/network_loader/models/"
-    input_dims: 5
-    output_dims: 5
+    model_name: "controller_best"
+    model_path: "/home/fsc-jupiter/Workspaces/fsc_autopilot_ws/src/torch_model_loader/models/"
+    input_dims_0: 9
+    input_dims_1: 9
+    input_dims_2: 4
+    output_dims: 4
 

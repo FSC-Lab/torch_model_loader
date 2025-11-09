@@ -19,7 +19,26 @@ find_package(geometry_msgs REQUIRED)
 find_package(nav_msgs REQUIRED)
 find_package(Eigen3 REQUIRED)
 
-list(APPEND CMAKE_PREFIX_PATH "$ENV{HOME}/miniconda3/envs/py39/lib/python3.9/site-packages/torch/share/cmake")
+
+# # Force ROS to use system Python
+# set(Python3_EXECUTABLE "/usr/bin/python3" CACHE FILEPATH "System Python for ROS 2")
+# find_package(Python3 COMPONENTS Interpreter REQUIRED)
+
+# # Point to the Python that has torch (your Conda env)
+# set(TORCH_PY "$ENV{HOME}/miniconda3/envs/CCM_hpinn/lib/python3.13" CACHE FILEPATH "Python with torch")
+
+# # Ask that Python where Torch's CMake files live, then append to search path
+# execute_process(
+#   COMMAND ${TORCH_PY} -c "import torch, sys; sys.stdout.write(torch.utils.cmake_prefix_path)"
+#   OUTPUT_VARIABLE TORCH_CMAKE_PREFIX
+#   RESULT_VARIABLE _torch_ret
+#   ERROR_QUIET
+# )
+# if(_torch_ret EQUAL 0 AND EXISTS "${TORCH_CMAKE_PREFIX}")
+#   list(APPEND CMAKE_PREFIX_PATH "${TORCH_CMAKE_PREFIX}")
+# endif()
+
+list(APPEND CMAKE_PREFIX_PATH "/home/fsc-jupiter/miniconda3/envs/CCM_hpinn/lib/python3.13/site-packages/torch/share/cmake")
 find_package(Torch REQUIRED)
 
 if (Torch_FOUND)
@@ -47,7 +66,8 @@ ament_export_dependencies(${_ob_deps})
 
 # Generate interfaces
 rosidl_generate_interfaces(${PROJECT_NAME}
-  "msg/Model.msg"
+  "msg/ModelInput.msg"
+  "msg/ModelOutput.msg"
   DEPENDENCIES 
   geometry_msgs 
   nav_msgs 

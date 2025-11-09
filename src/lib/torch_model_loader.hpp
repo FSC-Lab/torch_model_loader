@@ -8,6 +8,8 @@
 #include <chrono>
 #include <filesystem>
 #include <Eigen/Dense>
+//#include <vector>
+//#include <array>
 
 #include <rclcpp/rclcpp.hpp>
 #include <geometry_msgs/msg/twist.hpp>
@@ -15,15 +17,16 @@
 #include <geometry_msgs/msg/vector3_stamped.hpp>
 #include <nav_msgs/msg/odometry.hpp>
 
-#include "network_loader/msg/model.hpp"
+#include "network_loader/msg/model_input.hpp"
+#include "network_loader/msg/model_output.hpp"
 
 class TorchModelLoader : public rclcpp::Node{
 public:
     explicit TorchModelLoader(const rclcpp::NodeOptions & options);
     virtual ~TorchModelLoader() = default;
 
-    using InputType = geometry_msgs::msg::Vector3Stamped;
-    using OutputType = network_loader::msg::Model;
+    using InputType = network_loader::msg::ModelInput;
+    using OutputType = network_loader::msg::ModelOutput;
     using ModelPub = rclcpp::Publisher<OutputType>::SharedPtr;
 
 private:
@@ -32,8 +35,8 @@ private:
     // torch model related
     void SetupDevice(bool use_cpu = false);
     void LoadModules();
-    void GetModelOutputs(torch::Tensor input_tensor, OutputType &output_msg);
-    torch::Tensor PackInputs(InputType input_msg);
+    void GetModelOutputs(const std::vector<torch::jit::IValue> &model_input, OutputType &output_msg);
+    std::vector<torch::jit::IValue> PackInputs(const InputType &input_msg);
     torch::DeviceType device_type_;
     torch::jit::script::Module module_;
     bool load_successful_ = false; // Flag to indicate if model loading was successful
@@ -42,7 +45,9 @@ private:
     void LoadParameters();
     std::string model_name_;
     std::string model_path_;
-    int input_dims_;
+    int input_dims_0_;
+    int input_dims_1_;
+    int input_dims_2_;
     int output_dims_;
 
     // topics related

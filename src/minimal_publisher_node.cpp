@@ -2,7 +2,7 @@
 #include <memory>
 
 #include "rclcpp/rclcpp.hpp"
-#include "geometry_msgs/msg/vector3_stamped.hpp"
+#include "network_loader/msg/model_input.hpp"
 
 using namespace std::chrono_literals;
 
@@ -12,7 +12,7 @@ public:
   MinimalPublisher()
   : Node("minimal_publisher"), count_(0)
   {
-    publisher_ = this->create_publisher<geometry_msgs::msg::Vector3Stamped>("/model/input", 10);
+    publisher_ = this->create_publisher<network_loader::msg::ModelInput>("/model/input", 10);
     timer_ = this->create_wall_timer(
       10ms, std::bind(&MinimalPublisher::timer_callback, this));
   }
@@ -20,20 +20,31 @@ public:
 private:
   void timer_callback()
   {
-    auto message = geometry_msgs::msg::Vector3Stamped();
+    // Create message of your custom InputType
+    network_loader::msg::ModelInput message;
+
+    // Fill header
     message.header.stamp = this->get_clock()->now();
     message.header.frame_id = "base_link";
-    message.vector.x = static_cast<double>(0.1*count_);
-    message.vector.y = static_cast<double>(0.1*count_ * 2);
-    message.vector.z = static_cast<double>(0.1*count_ * 3);
 
-    // RCLCPP_INFO(this->get_logger(), "Publishing: x=%f, y=%f, z=%f",
-    //             message.vector.x, message.vector.y, message.vector.z);
+    // Example data for x, xe, uref
+    for (int i = 0; i < 9; ++i) {
+      message.x[i]  = 0.1f * static_cast<float>(count_ + i);
+      message.xe[i] = 0.2f * static_cast<float>(count_ + i);
+    }
+
+    for (int i = 0; i < 4; ++i) {
+      message.uref[i] = 0.05f * static_cast<float>(count_ + i); 
+    }
+
+    // RCLCPP_INFO(this->get_logger(), "Publishing model input #%zu", count_);
+
     publisher_->publish(message);
     count_++;
   }
+
   rclcpp::TimerBase::SharedPtr timer_;
-  rclcpp::Publisher<geometry_msgs::msg::Vector3Stamped>::SharedPtr publisher_;
+  rclcpp::Publisher<network_loader::msg::ModelInput>::SharedPtr publisher_;
   size_t count_;
 };
 
