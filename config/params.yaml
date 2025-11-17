@@ -2,8 +2,8 @@ model_loader: # must much the node name in launch file
   ros__parameters:
     model_name: "controller_best"
     model_path: "/home/fsc-jupiter/Workspaces/fsc_autopilot_ws/src/torch_model_loader/models/"
-    input_dims_0: 9
-    input_dims_1: 9
-    input_dims_2: 4
-    output_dims: 4
+    input_dims_x: 6
+    input_dims_xe: 6
+    input_dims_uref: 3
+    output_dims: 3
 

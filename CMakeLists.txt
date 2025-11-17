@@ -12,12 +12,13 @@ endif()
 
 # find dependencies
 find_package(ament_cmake REQUIRED)
-find_package(rosidl_default_generators REQUIRED)
+# find_package(rosidl_default_generators REQUIRED)
 find_package(rclcpp REQUIRED)
 find_package(std_msgs REQUIRED)
 find_package(geometry_msgs REQUIRED)
 find_package(nav_msgs REQUIRED)
 find_package(Eigen3 REQUIRED)
+
 
 
 # # Force ROS to use system Python
@@ -64,18 +65,18 @@ ament_export_dependencies(ament_cmake rclcpp rosidl_default_runtime)
 ament_export_dependencies(${_ob_deps})
 
 
-# Generate interfaces
-rosidl_generate_interfaces(${PROJECT_NAME}
-  "msg/ModelInput.msg"
-  "msg/ModelOutput.msg"
-  DEPENDENCIES 
-  geometry_msgs 
-  nav_msgs 
-  std_msgs
-)
+# # Generate interfaces
+# rosidl_generate_interfaces(${PROJECT_NAME}
+#   DEPENDENCIES 
+#   geometry_msgs 
+#   nav_msgs 
+#   std_msgs
+#   Model_input.msg
+#   Model_output.msg
+# )
 
-rosidl_get_typesupport_target(cpp_typesupport_target ${PROJECT_NAME}
-                              rosidl_typesupport_cpp)
+# rosidl_get_typesupport_target(cpp_typesupport_target ${PROJECT_NAME}
+#                               rosidl_typesupport_cpp)
 
 
 # include directory

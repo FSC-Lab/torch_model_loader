@@ -15,28 +15,41 @@
 #include <geometry_msgs/msg/twist.hpp>
 #include <geometry_msgs/msg/pose_stamped.hpp>
 #include <geometry_msgs/msg/vector3_stamped.hpp>
+#include <geometry_msgs/msg/point.hpp>
+#include <std_msgs/msg/bool.hpp>
+#include <geometry_msgs/msg/vector3.hpp>
 #include <nav_msgs/msg/odometry.hpp>
+#include <std_msgs/msg/float32_multi_array.hpp>
 
-#include "network_loader/msg/model_input.hpp"
-#include "network_loader/msg/model_output.hpp"
 
 class TorchModelLoader : public rclcpp::Node{
 public:
     explicit TorchModelLoader(const rclcpp::NodeOptions & options);
     virtual ~TorchModelLoader() = default;
 
-    using InputType = network_loader::msg::ModelInput;
-    using OutputType = network_loader::msg::ModelOutput;
-    using ModelPub = rclcpp::Publisher<OutputType>::SharedPtr;
+    // using InputType = network_loader::msg::ModelInput;
+    // using OutputType = network_loader::msg::ModelOutput;
+    // using ModelPub = rclcpp::Publisher<OutputType>::SharedPtr;
 
 private:
     static constexpr uint32_t qos = 10u; // quality of service in the publisher and subscriber
     
+    
+    // Inialize member variables for model inputs
+    geometry_msgs::msg::Point latest_position_ref_;
+    geometry_msgs::msg::Vector3 latest_velocity_ref_;
+    geometry_msgs::msg::Vector3 latest_uref_;
+    nav_msgs::msg::Odometry latest_odom_est_;
+    bool CCM_activated_{false};
+    
     // torch model related
     void SetupDevice(bool use_cpu = false);
     void LoadModules();
-    void GetModelOutputs(const std::vector<torch::jit::IValue> &model_input, OutputType &output_msg);
-    std::vector<torch::jit::IValue> PackInputs(const InputType &input_msg);
+    void GetModelOutputs(const std::vector<torch::jit::IValue> &model_input, std_msgs::msg::Float32MultiArray &output_msg);
+    std::vector<torch::jit::IValue> PackInputs(const geometry_msgs::msg::Point &latest_position_ref_,
+                                                            const geometry_msgs::msg::Vector3 &latest_velocity_ref_,
+                                                            const geometry_msgs::msg::Vector3 &latest_uref_,
+                                                            const nav_msgs::msg::Odometry &latest_odom_est_);
     torch::DeviceType device_type_;
     torch::jit::script::Module module_;
     bool load_successful_ = false; // Flag to indicate if model loading was successful
@@ -45,20 +58,20 @@ private:
     void LoadParameters();
     std::string model_name_;
     std::string model_path_;
-    int input_dims_0_;
-    int input_dims_1_;
-    int input_dims_2_;
+    int input_dims_x_;
+    int input_dims_xe_;
+    int input_dims_uref_;
     int output_dims_;
 
     // topics related
     rclcpp::TimerBase::SharedPtr timer_;
-    rclcpp::Publisher<OutputType>::SharedPtr publisher_;
-    void ListenerCallback(const InputType &msg);
+    rclcpp::Subscription<geometry_msgs::msg::Point>::SharedPtr position_ref_sub_;
+    rclcpp::Subscription<geometry_msgs::msg::Vector3>::SharedPtr velocity_ref_sub_;
+    rclcpp::Subscription<geometry_msgs::msg::Vector3>::SharedPtr uref_sub_;
+    rclcpp::Subscription<nav_msgs::msg::Odometry>::SharedPtr estimator_sub_;
+    rclcpp::Subscription<std_msgs::msg::Bool>::SharedPtr CCM_activated_sub_;
+    rclcpp::Publisher<std_msgs::msg::Float32MultiArray>::SharedPtr output_pub_;
     void TimerCallback();
-
-    // listener related
-    InputType latest_message_;
-    rclcpp::Subscription<InputType>::SharedPtr subscription_;
 
 };
 
