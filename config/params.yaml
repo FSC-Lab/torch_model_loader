@@ -1,9 +1,11 @@
 model_loader: # must much the node name in launch file
   ros__parameters:
-    model_name: "controller_best"
+    model_name: "quad_constrained_final_tuned_1rad" # "quad_constrained_final_tuned_1rad" # "quad_constrained_tuned_sf01_Re_corrected" # "quad_constrained"
     model_path: "/home/fsc-jupiter/Workspaces/fsc_autopilot_ws/src/torch_model_loader/models/"
-    input_dims_x: 6
-    input_dims_xe: 6
-    input_dims_uref: 3
-    output_dims: 3
+    model_rate: 250.0
+    input_dims_x: 15
+    input_dims_xref: 15
+    input_dims_uref: 4
+    output_dims: 4
+
 
