@@ -31,7 +31,7 @@ TorchModelLoader::TorchModelLoader(const rclcpp::NodeOptions & options):
     
     // Create subscriber to "trajectory_generator" topic with specific uav_prefix
     estimator_sub_ = this->create_subscription<nav_msgs::msg::Odometry>(
-            "uav_0/state_estimator/local_position/odom",
+            "state_estimator/local_position/odom",
             qos,
             [this](const nav_msgs::msg::Odometry::SharedPtr msg) {
                 this->latest_odom_est_ = *msg;
@@ -39,7 +39,7 @@ TorchModelLoader::TorchModelLoader(const rclcpp::NodeOptions & options):
         );
     
     vehicle_attitude_sub_ = this->create_subscription<px4_msgs::msg::VehicleAttitude>(
-            "uav_0/fmu/out/vehicle_attitude",
+            "fmu/out/vehicle_attitude",
             qos_best_effort_transient_local(),
             [this](const px4_msgs::msg::VehicleAttitude::ConstSharedPtr& msg) {
                 this->latest_vehicle_attitude_ = *msg;
@@ -47,7 +47,7 @@ TorchModelLoader::TorchModelLoader(const rclcpp::NodeOptions & options):
         );
 
     xref_sub_ = this->create_subscription<std_msgs::msg::Float32MultiArray>(
-            "uav_0/trajectory_generator/xref",
+            "trajectory_generator/xref",
             qos,
             [this](const std_msgs::msg::Float32MultiArray::SharedPtr msg) {
                 this->latest_xref_ = *msg;
@@ -55,7 +55,7 @@ TorchModelLoader::TorchModelLoader(const rclcpp::NodeOptions & options):
         );
 
     uref_sub_ = this->create_subscription<std_msgs::msg::Float32MultiArray>(
-            "uav_0/trajectory_generator/uref",
+            "trajectory_generator/uref",
             qos,
             [this](const std_msgs::msg::Float32MultiArray::SharedPtr msg) {
                 this->latest_uref_ = *msg;
@@ -63,15 +63,15 @@ TorchModelLoader::TorchModelLoader(const rclcpp::NodeOptions & options):
         );
     
     CCM_activated_sub_ = this->create_subscription<std_msgs::msg::Bool>(
-            "uav_0/fsc_autopilot_ros2/CCM_activated", 
+            "fsc_autopilot_ros2/CCM_activated", 
             qos,
             [this] (const std_msgs::msg::Bool::SharedPtr msg) {
                 this->CCM_activated_ = msg->data;
             }
         );
-    
-    output_pub_ = this->create_publisher<std_msgs::msg::Float32MultiArray>("uav_0/model_loader/rate_setpoint", 10);
-    x_pub_ = this->create_publisher<std_msgs::msg::Float32MultiArray>("uav_0/model_loader/x", 10);
+
+    output_pub_ = this->create_publisher<std_msgs::msg::Float32MultiArray>("model_loader/rate_setpoint", 10);
+    x_pub_ = this->create_publisher<std_msgs::msg::Float32MultiArray>("model_loader/x", 10);
 
     model_period_ = 1/model_rate_;  // seconds per cycle 
     timer_ = this->create_wall_timer(

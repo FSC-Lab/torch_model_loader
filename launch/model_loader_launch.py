@@ -7,7 +7,6 @@ import os
 
 def launch_setup(context, *args, **kwargs):
     uav_prefix = LaunchConfiguration('uav_prefix').perform(context)
-    uav_list = uav_prefix.split()
 
     # Get absolute path to the parameter file
     package_dir = get_package_share_directory('network_loader')
@@ -26,9 +25,9 @@ def launch_setup(context, *args, **kwargs):
             package='network_loader',
             executable='model_loader_node',
             name='model_loader',  # Changed to match params.yaml namespace
+            namespace=uav_prefix,
             output='screen',
             parameters=[param_file],
-            arguments=uav_list
         )
     ]
 
