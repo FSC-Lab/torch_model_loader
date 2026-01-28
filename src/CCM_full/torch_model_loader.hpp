@@ -74,6 +74,8 @@ private:
     rclcpp::Subscription<px4_msgs::msg::VehicleAttitude>::SharedPtr vehicle_attitude_sub_;
     rclcpp::Subscription<std_msgs::msg::Bool>::SharedPtr CCM_activated_sub_;
     rclcpp::Publisher<std_msgs::msg::Float32MultiArray>::SharedPtr output_pub_;
+    rclcpp::Publisher<std_msgs::msg::Float32MultiArray>::SharedPtr x_pub_;
+
     void TimerCallback();
 
 };

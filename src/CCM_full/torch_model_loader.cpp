@@ -70,8 +70,10 @@ TorchModelLoader::TorchModelLoader(const rclcpp::NodeOptions & options):
             }
         );
     
-    model_period_ = 1/model_rate_;  // seconds per cycle 
     output_pub_ = this->create_publisher<std_msgs::msg::Float32MultiArray>("uav_0/model_loader/rate_setpoint", 10);
+    x_pub_ = this->create_publisher<std_msgs::msg::Float32MultiArray>("uav_0/model_loader/x", 10);
+
+    model_period_ = 1/model_rate_;  // seconds per cycle 
     timer_ = this->create_wall_timer(
       std::chrono::duration<double>(model_period_), std::bind(&TorchModelLoader::TimerCallback, this));
 }
@@ -281,15 +283,21 @@ std::vector<torch::jit::IValue> TorchModelLoader::PackInputs(const nav_msgs::msg
         static_cast<float>(latest_odom_est_.twist.twist.linear.x),
         static_cast<float>(latest_odom_est_.twist.twist.linear.y),
         static_cast<float>(latest_odom_est_.twist.twist.linear.z)
-    }, torch::kFloat32).view({1, 3, 1});                                 
+    }, torch::kFloat32).view({1, 3, 1});   
+    
+    // Quaternion from state estimator
+    Eigen::Quaterniond q_odom(latest_odom_est_.pose.pose.orientation.w, latest_odom_est_.pose.pose.orientation.x, 
+        latest_odom_est_.pose.pose.orientation.y, latest_odom_est_.pose.pose.orientation.z);
+    q_odom.normalize();
 
-    // Use quaternion from pixhawk (PX4 quaternion in NED frame)!!!
+    // Use quaternion from pixhawk (PX4 quaternion in NED frame, [w, x, y, z])!!!
     Eigen::Quaterniond q_ned(latest_vehicle_attitude_.q[0], latest_vehicle_attitude_.q[1], 
                              latest_vehicle_attitude_.q[2], latest_vehicle_attitude_.q[3]);
     Eigen::Quaterniond q_enu = getNEDqFromENUq(q_ned);  
     q_enu.normalize(); // Normalize for safety
+
     // Rotation from FLU to ENU
-    Eigen::Matrix<float, 3, 3, Eigen::RowMajor> R_IB = q_enu.toRotationMatrix().cast<float>();  
+    Eigen::Matrix<float, 3, 3, Eigen::RowMajor> R_IB = q_enu.toRotationMatrix().cast<float>();   // q_enu (from PX4); q_odom (from state estimator)
     torch::Tensor att = (torch::from_blob(R_IB.data(), {3, 3}, torch::kFloat32).clone()).reshape({1, 9, 1});
 
     // Stack everything together into a message
@@ -305,6 +313,22 @@ std::vector<torch::jit::IValue> TorchModelLoader::PackInputs(const nav_msgs::msg
     }
 
     // RCLCPP_INFO(this->get_logger(), "Converted input message to tensors");
+
+    // Publish x as current state
+    torch::Tensor x_ten = x;
+    if (x_ten.device().is_cuda()) {
+        x_ten = x_ten.to(torch::kCPU);
+    }
+    x_ten = x_ten.contiguous();
+
+    std_msgs::msg::Float32MultiArray x_msg;
+    const float* data = x_ten.data_ptr<float>();
+
+    x_msg.data.resize(x_ten.numel());
+    for (int i = 0; i < x_ten.numel(); ++i) {
+        x_msg.data[i] = data[i];
+    }
+    x_pub_->publish(x_msg);
 
     // Return as a vector for forward()
     return {x, xref, uref};
