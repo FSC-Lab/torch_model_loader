@@ -1,6 +1,6 @@
-model_loader: # must much the node name in launch file
+model_loader:
   ros__parameters:
-    model_name: "quad_constrained_tuned_sf01_Re_corrected" # "quad_constrained_final_tuned_1rad" # "quad_constrained_tuned_sf01_Re_corrected" # "quad_constrained"
+    model_name: "quad_constrained_euler_tuned_cpu" # "quad_constrained_euler_tuned_cpu" # "quad_constrained_final_tuned_1rad" # "quad_constrained_tuned_sf01_Re_corrected" # "quad_constrained"
     model_path: "/home/fsc-jupiter/Workspaces/fsc_autopilot_ws/src/torch_model_loader/models/"
     model_rate: 250.0
     input_dims_x: 15
