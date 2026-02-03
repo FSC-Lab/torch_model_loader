@@ -8,24 +8,17 @@ TorchModelLoader::TorchModelLoader(const rclcpp::NodeOptions & options):
     LoadModules();
 
     // Create subscriber to "trajectory_generator" topic with specific uav_prefix
-    position_ref_sub_ = this->create_subscription<geometry_msgs::msg::Point>(
+    xref_sub_ = this->create_subscription<std_msgs::msg::Float32MultiArray>(
             "uav_0/trajectory_generator/position",
             10,
-            [this](const geometry_msgs::msg::Point::SharedPtr msg) {
-                this->latest_position_ref_ = *msg;
+            [this](const std_msgs::msg::Float32MultiArray::SharedPtr msg) {
+                this->latest_xref_ = *msg;
             }
         );
-    velocity_ref_sub_ = this->create_subscription<geometry_msgs::msg::Vector3>(
-            "uav_0/trajectory_generator/velocity",
-            10,
-            [this](const geometry_msgs::msg::Vector3::SharedPtr msg) {
-                this->latest_velocity_ref_ = *msg;
-            }
-        );
-    uref_sub_ = this->create_subscription<geometry_msgs::msg::Vector3>(
+    uref_sub_ = this->create_subscription<std_msgs::msg::Float32MultiArray>(
             "uav_0/trajectory_generator/uref",
             10,
-            [this](const geometry_msgs::msg::Vector3::SharedPtr msg) {
+            [this](const std_msgs::msg::Float32MultiArray::SharedPtr msg) {
                 this->latest_uref_ = *msg;
             }
         );
@@ -44,7 +37,7 @@ TorchModelLoader::TorchModelLoader(const rclcpp::NodeOptions & options):
             }
         );
         
-    output_pub_ = this->create_publisher<std_msgs::msg::Float32MultiArray>("uav_0/model_loader/thrust_setpoint", 10);
+    output_pub_ = this->create_publisher<std_msgs::msg::Float32MultiArray>("uav_0/model_loader/u", 10);
     timer_ = this->create_wall_timer(
       std::chrono::milliseconds(10), std::bind(&TorchModelLoader::TimerCallback, this));
 }
@@ -223,9 +216,8 @@ void TorchModelLoader::GetModelOutputs(const std::vector<torch::jit::IValue> &mo
 }
 
 
-std::vector<torch::jit::IValue> TorchModelLoader::PackInputs(const geometry_msgs::msg::Point &latest_position_ref_,
-                                                            const geometry_msgs::msg::Vector3 &latest_velocity_ref_,
-                                                            const geometry_msgs::msg::Vector3 &latest_uref_,
+std::vector<torch::jit::IValue> TorchModelLoader::PackInputs(const std_msgs::msg::Float32MultiArray &latest_xref_,
+                                                            const std_msgs::msg::Float32MultiArray &latest_uref_,
                                                             const nav_msgs::msg::Odometry &latest_odom_est_)
 {
     // Create tensors for each input
@@ -236,16 +228,9 @@ std::vector<torch::jit::IValue> TorchModelLoader::PackInputs(const geometry_msgs
                                      static_cast<float>(latest_odom_est_.twist.twist.linear.y),
                                      static_cast<float>(latest_odom_est_.twist.twist.linear.z)}, torch::kFloat32).reshape({1, 6, 1});
 
-    torch::Tensor xref = torch::tensor({static_cast<float>(latest_position_ref_.x),
-                                        static_cast<float>(latest_position_ref_.y),
-                                        static_cast<float>(latest_position_ref_.z),
-                                        static_cast<float>(latest_velocity_ref_.x),
-                                        static_cast<float>(latest_velocity_ref_.y),
-                                        static_cast<float>(latest_velocity_ref_.z)}, torch::kFloat32).reshape({1, 6, 1});
+    torch::Tensor xref = torch::tensor(latest_xref_.data, torch::kFloat32).reshape({1, 6, 1});
 
-    torch::Tensor uref = torch::tensor({static_cast<float>(latest_uref_.x), 
-                                        static_cast<float>(latest_uref_.y), 
-                                        static_cast<float>(latest_uref_.z)}, torch::kFloat32).reshape({1, 3, 1});
+    torch::Tensor uref = torch::tensor(latest_uref_.data, torch::kFloat32).reshape({1, 3, 1});
 
     // Move to CUDA if needed
     if (device_type_ == torch::kCUDA) {
@@ -271,8 +256,7 @@ void TorchModelLoader::TimerCallback(){
     // }
     
     // Pack inputs from the ROS message
-    std::vector<torch::jit::IValue> model_input = PackInputs(latest_position_ref_,
-                                                             latest_velocity_ref_,
+    std::vector<torch::jit::IValue> model_input = PackInputs(latest_xref_,
                                                              latest_uref_,
                                                              latest_odom_est_);
 

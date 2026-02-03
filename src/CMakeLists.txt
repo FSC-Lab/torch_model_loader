@@ -1,5 +1,5 @@
-# add_subdirectory(CCM_outer)
-add_subdirectory(CCM_full)
+add_subdirectory(CCM_outer)
+# add_subdirectory(CCM_full)
 
 # add_executable(minimal_publisher_node minimal_publisher_node.cpp)
 # ament_target_dependencies(minimal_publisher_node rclcpp geometry_msgs)

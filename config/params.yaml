@@ -1,11 +1,11 @@
 /**/model_loader:
   ros__parameters:
-    model_name: "quad_constrained_euler_tuned" # "quad_constrained_euler_tuned" # "quad_constrained_final_tuned_1rad" # "quad_constrained_tuned_sf01_Re_corrected" # "quad_constrained"
-    model_path: "/home/fsc-jupiter/Workspaces/fsc_autopilot_ws/src/torch_model_loader/models/"
-    model_rate: 250.0
-    input_dims_x: 15
-    input_dims_xref: 15
-    input_dims_uref: 4
-    output_dims: 4
+    model_name: "F450_outer" # "F450_outer" # "quad_constrained_euler_tuned" # "quad_constrained_final_tuned_1rad" # "quad_constrained_tuned_sf01_Re_corrected" # "quad_constrained"
+    model_path: "/home/fsc-jupiter/Workspaces/fsc_autopilot_ws/src/torch_model_loader/models/outer_models/" # outer_models # SO3_models
+    model_rate: 100.0
+    input_dims_x: 6 #6 #15
+    input_dims_xref: 6 #6 #15
+    input_dims_uref: 3 #3 #4
+    output_dims: 3 #3 #4
 
 

@@ -36,9 +36,8 @@ private:
     
     
     // Inialize member variables for model inputs
-    geometry_msgs::msg::Point latest_position_ref_;
-    geometry_msgs::msg::Vector3 latest_velocity_ref_;
-    geometry_msgs::msg::Vector3 latest_uref_;
+    std_msgs::msg::Float32MultiArray latest_xref_;
+    std_msgs::msg::Float32MultiArray latest_uref_;
     nav_msgs::msg::Odometry latest_odom_est_;
     bool CCM_activated_{false};
     
@@ -46,9 +45,8 @@ private:
     void SetupDevice(bool use_cpu = false);
     void LoadModules();
     void GetModelOutputs(const std::vector<torch::jit::IValue> &model_input, std_msgs::msg::Float32MultiArray &output_msg);
-    std::vector<torch::jit::IValue> PackInputs(const geometry_msgs::msg::Point &latest_position_ref_,
-                                                            const geometry_msgs::msg::Vector3 &latest_velocity_ref_,
-                                                            const geometry_msgs::msg::Vector3 &latest_uref_,
+    std::vector<torch::jit::IValue> PackInputs(const std_msgs::msg::Float32MultiArray &latest_xref_,
+                                                            const std_msgs::msg::Float32MultiArray &latest_uref_,
                                                             const nav_msgs::msg::Odometry &latest_odom_est_);
     torch::DeviceType device_type_;
     torch::jit::script::Module module_;
@@ -65,9 +63,8 @@ private:
 
     // topics related
     rclcpp::TimerBase::SharedPtr timer_;
-    rclcpp::Subscription<geometry_msgs::msg::Point>::SharedPtr position_ref_sub_;
-    rclcpp::Subscription<geometry_msgs::msg::Vector3>::SharedPtr velocity_ref_sub_;
-    rclcpp::Subscription<geometry_msgs::msg::Vector3>::SharedPtr uref_sub_;
+    rclcpp::Subscription<std_msgs::msg::Float32MultiArray>::SharedPtr xref_sub_;
+    rclcpp::Subscription<std_msgs::msg::Float32MultiArray>::SharedPtr uref_sub_;
     rclcpp::Subscription<nav_msgs::msg::Odometry>::SharedPtr estimator_sub_;
     rclcpp::Subscription<std_msgs::msg::Bool>::SharedPtr CCM_activated_sub_;
     rclcpp::Publisher<std_msgs::msg::Float32MultiArray>::SharedPtr output_pub_;
