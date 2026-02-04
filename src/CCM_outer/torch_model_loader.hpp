@@ -56,10 +56,12 @@ private:
     void LoadParameters();
     std::string model_name_;
     std::string model_path_;
+    double model_rate_;
     int input_dims_x_;
-    int input_dims_xe_;
+    int input_dims_xref_;
     int input_dims_uref_;
     int output_dims_;
+    double model_period_{0.0};
 
     // topics related
     rclcpp::TimerBase::SharedPtr timer_;
@@ -68,6 +70,7 @@ private:
     rclcpp::Subscription<nav_msgs::msg::Odometry>::SharedPtr estimator_sub_;
     rclcpp::Subscription<std_msgs::msg::Bool>::SharedPtr CCM_activated_sub_;
     rclcpp::Publisher<std_msgs::msg::Float32MultiArray>::SharedPtr output_pub_;
+    rclcpp::Publisher<std_msgs::msg::Float32MultiArray>::SharedPtr x_pub_;
     void TimerCallback();
 
 };

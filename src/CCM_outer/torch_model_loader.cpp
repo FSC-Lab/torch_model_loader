@@ -7,39 +7,46 @@ TorchModelLoader::TorchModelLoader(const rclcpp::NodeOptions & options):
     SetupDevice(false); // Default to using GPU if available, otherwise CPU
     LoadModules();
 
+    // Initialize latest reference messages
+    latest_xref_.data.resize(input_dims_xref_, 0.0f);
+    latest_uref_.data.resize(input_dims_uref_, 0.0f);
+
     // Create subscriber to "trajectory_generator" topic with specific uav_prefix
     xref_sub_ = this->create_subscription<std_msgs::msg::Float32MultiArray>(
-            "uav_0/trajectory_generator/position",
+            "trajectory_generator/xref",
             10,
             [this](const std_msgs::msg::Float32MultiArray::SharedPtr msg) {
                 this->latest_xref_ = *msg;
             }
         );
     uref_sub_ = this->create_subscription<std_msgs::msg::Float32MultiArray>(
-            "uav_0/trajectory_generator/uref",
+            "trajectory_generator/uref",
             10,
             [this](const std_msgs::msg::Float32MultiArray::SharedPtr msg) {
                 this->latest_uref_ = *msg;
             }
         );
     estimator_sub_ = this->create_subscription<nav_msgs::msg::Odometry>(
-            "uav_0/state_estimator/local_position/odom",
+            "state_estimator/local_position/odom",
             10,
             [this](const nav_msgs::msg::Odometry::SharedPtr msg) {
                 this->latest_odom_est_ = *msg;
             }
         );
     CCM_activated_sub_ = this->create_subscription<std_msgs::msg::Bool>(
-            "uav_0/fsc_autopilot_ros2/CCM_activated", // need to change
+            "fsc_autopilot_ros2/CCM_activated", // need to change
             10,
             [this] (const std_msgs::msg::Bool::SharedPtr msg) {
                 this->CCM_activated_ = msg->data;
             }
         );
         
-    output_pub_ = this->create_publisher<std_msgs::msg::Float32MultiArray>("uav_0/model_loader/u", 10);
+    output_pub_ = this->create_publisher<std_msgs::msg::Float32MultiArray>("model_loader/u", 10);
+    x_pub_ = this->create_publisher<std_msgs::msg::Float32MultiArray>("model_loader/x", 10);
+
+    model_period_ = 1/model_rate_;  // seconds per cycle 
     timer_ = this->create_wall_timer(
-      std::chrono::milliseconds(10), std::bind(&TorchModelLoader::TimerCallback, this));
+      std::chrono::duration<double>(model_period_), std::bind(&TorchModelLoader::TimerCallback, this));
 }
         
 
@@ -47,16 +54,18 @@ void TorchModelLoader::LoadParameters() {
     // Declare parameters with default values
     this->declare_parameter<std::string>("model_name", "");
     this->declare_parameter<std::string>("model_path", "");
+    this->declare_parameter<double>("model_rate", -1.0);
     this->declare_parameter<int>("input_dims_x", -1);
-    this->declare_parameter<int>("input_dims_xe", -1);
+    this->declare_parameter<int>("input_dims_xref", -1);
     this->declare_parameter<int>("input_dims_uref", -1);
     this->declare_parameter<int>("output_dims", -1);
     
     // Get the parameter values
     std::string model_name;
     std::string model_path;
+    double model_rate;
     int input_dims_x;
-    int input_dims_xe;
+    int input_dims_xref;
     int input_dims_uref;
     int output_dims;
     
@@ -71,21 +80,26 @@ void TorchModelLoader::LoadParameters() {
         rclcpp::shutdown();
         std::exit(1);
     }
+
+    if (!this->get_parameter("model_rate", model_rate)) {
+        RCLCPP_ERROR(this->get_logger(), "model_rate parameter must be larger than 100, got: %f", model_rate);
+        throw std::runtime_error("Invalid model_rate parameter");
+    }    
     
     if (!this->get_parameter("input_dims_x", input_dims_x)) {
-        RCLCPP_ERROR(this->get_logger(), "Failed to load input_dims parameter.");
+        RCLCPP_ERROR(this->get_logger(), "Failed to load input_dims_x parameter.");
         rclcpp::shutdown();
         std::exit(1);
     }
 
-    if (!this->get_parameter("input_dims_xe", input_dims_xe)) {
-        RCLCPP_ERROR(this->get_logger(), "Failed to load input_dims parameter.");
+    if (!this->get_parameter("input_dims_xref", input_dims_xref)) {
+        RCLCPP_ERROR(this->get_logger(), "Failed to load input_dims_xref parameter.");
         rclcpp::shutdown();
         std::exit(1);
     }
 
     if (!this->get_parameter("input_dims_uref", input_dims_uref)) {
-        RCLCPP_ERROR(this->get_logger(), "Failed to load input_dims parameter.");
+        RCLCPP_ERROR(this->get_logger(), "Failed to load input_dims_uref parameter.");
         rclcpp::shutdown();
         std::exit(1);
     }
@@ -107,19 +121,24 @@ void TorchModelLoader::LoadParameters() {
         throw std::runtime_error("Invalid model_path parameter");
     }
     
+    if (model_rate < 100.0) {
+        RCLCPP_ERROR(this->get_logger(), "model_rate parameter must be larger than 100, got: %f", model_rate);
+        throw std::runtime_error("Invalid model_rate parameter");
+    }    
+
     if (input_dims_x <= 0) {
-        RCLCPP_ERROR(this->get_logger(), "input_dims must be positive, got: %d", input_dims_x);
-        throw std::runtime_error("Invalid input_dims parameter");
+        RCLCPP_ERROR(this->get_logger(), "input_dims_x must be positive, got: %d", input_dims_x);
+        throw std::runtime_error("Invalid input_dims_x parameter");
     }
 
-    if (input_dims_xe <= 0) {
-        RCLCPP_ERROR(this->get_logger(), "input_dims must be positive, got: %d", input_dims_xe);
-        throw std::runtime_error("Invalid input_dims parameter");
+    if (input_dims_xref <= 0) {
+        RCLCPP_ERROR(this->get_logger(), "input_dims_xref must be positive, got: %d", input_dims_xref);
+        throw std::runtime_error("Invalid input_dims_xref parameter");
     }
 
     if (input_dims_uref <= 0) {
-        RCLCPP_ERROR(this->get_logger(), "input_dims must be positive, got: %d", input_dims_uref);
-        throw std::runtime_error("Invalid input_dims parameter");
+        RCLCPP_ERROR(this->get_logger(), "input_dims_uref must be positive, got: %d", input_dims_uref);
+        throw std::runtime_error("Invalid input_dims_uref parameter");
     }
     
     if (output_dims <= 0) {
@@ -131,16 +150,18 @@ void TorchModelLoader::LoadParameters() {
     RCLCPP_INFO(this->get_logger(), "Loaded model configuration:");
     RCLCPP_INFO(this->get_logger(), "  Model name: %s", model_name.c_str());
     RCLCPP_INFO(this->get_logger(), "  Model path: %s", model_path.c_str());
+    RCLCPP_INFO(this->get_logger(), "  Model rate: %f", model_rate);
     RCLCPP_INFO(this->get_logger(), "  Input dims_x: %d", input_dims_x);
-    RCLCPP_INFO(this->get_logger(), "  Input dims_xe: %d", input_dims_xe);
+    RCLCPP_INFO(this->get_logger(), "  Input dims_xref: %d", input_dims_xref);
     RCLCPP_INFO(this->get_logger(), "  Input dims_uref: %d", input_dims_uref);
     RCLCPP_INFO(this->get_logger(), "  Output dims: %d", output_dims);
     
     // Store as member variables for later use
     model_name_ = model_name;
     model_path_ = model_path;
+    model_rate_ = model_rate;
     input_dims_x_ = input_dims_x;
-    input_dims_xe_ = input_dims_xe;
+    input_dims_xref_ = input_dims_xref;
     input_dims_uref_ = input_dims_uref;
     output_dims_ = output_dims;
 }
@@ -226,12 +247,11 @@ std::vector<torch::jit::IValue> TorchModelLoader::PackInputs(const std_msgs::msg
                                      static_cast<float>(latest_odom_est_.pose.pose.position.z),
                                      static_cast<float>(latest_odom_est_.twist.twist.linear.x),
                                      static_cast<float>(latest_odom_est_.twist.twist.linear.y),
-                                     static_cast<float>(latest_odom_est_.twist.twist.linear.z)}, torch::kFloat32).reshape({1, 6, 1});
+                                     static_cast<float>(latest_odom_est_.twist.twist.linear.z)}, torch::kFloat32).view({1, input_dims_x_, 1});
 
-    torch::Tensor xref = torch::tensor(latest_xref_.data, torch::kFloat32).reshape({1, 6, 1});
+    torch::Tensor xref = torch::tensor(latest_xref_.data, torch::kFloat32).view({1, input_dims_xref_, 1});
 
-    torch::Tensor uref = torch::tensor(latest_uref_.data, torch::kFloat32).reshape({1, 3, 1});
-
+    torch::Tensor uref = torch::tensor(latest_uref_.data, torch::kFloat32).view({1, input_dims_uref_, 1});
     // Move to CUDA if needed
     if (device_type_ == torch::kCUDA) {
         x = x.to(torch::kCUDA);
@@ -240,6 +260,22 @@ std::vector<torch::jit::IValue> TorchModelLoader::PackInputs(const std_msgs::msg
     }
 
     // RCLCPP_INFO(this->get_logger(), "Converted input message to tensors");
+
+    // Publish x as current state
+    torch::Tensor x_ten = x;
+    if (x_ten.device().is_cuda()) {
+        x_ten = x_ten.to(torch::kCPU);
+    }
+    x_ten = x_ten.contiguous();
+
+    std_msgs::msg::Float32MultiArray x_msg;
+    const float* data = x_ten.data_ptr<float>();
+
+    x_msg.data.resize(x_ten.numel());
+    for (int i = 0; i < x_ten.numel(); ++i) {
+        x_msg.data[i] = data[i];
+    }
+    x_pub_->publish(x_msg);
 
     // Return as a vector for forward()
     return {x, xref, uref};

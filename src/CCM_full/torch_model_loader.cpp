@@ -26,8 +26,9 @@ TorchModelLoader::TorchModelLoader(const rclcpp::NodeOptions & options):
     SetupDevice(false); // Default to using GPU if available, otherwise CPU
     LoadModules();
     
-    latest_xref_.data.resize(15, 0.0f);
-    latest_uref_.data.resize(4, 0.0f);
+    // Initialize latest reference messages
+    latest_xref_.data.resize(input_dims_xref_, 0.0f);
+    latest_uref_.data.resize(input_dims_uref_, 0.0f);
     
     // Create subscriber to "trajectory_generator" topic with specific uav_prefix
     estimator_sub_ = this->create_subscription<nav_msgs::msg::Odometry>(
