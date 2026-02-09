@@ -73,6 +73,8 @@ TorchModelLoader::TorchModelLoader(const rclcpp::NodeOptions & options):
 
     output_pub_ = this->create_publisher<std_msgs::msg::Float32MultiArray>("model_loader/rate_setpoint", 10);
     x_pub_ = this->create_publisher<std_msgs::msg::Float32MultiArray>("model_loader/x", 10);
+    xref_pub_ = this->create_publisher<std_msgs::msg::Float32MultiArray>("model_loader/xref", 10);
+    uref_pub_ = this->create_publisher<std_msgs::msg::Float32MultiArray>("model_loader/uref", 10);
 
     model_period_ = 1/model_rate_;  // seconds per cycle 
     timer_ = this->create_wall_timer(
@@ -305,6 +307,38 @@ std::vector<torch::jit::IValue> TorchModelLoader::PackInputs(const nav_msgs::msg
     torch::Tensor x = torch::cat({pos, vel, att}, 1).view({1, input_dims_x_, 1});
     torch::Tensor xref = torch::tensor(latest_xref_.data, torch::kFloat32).view({1, input_dims_xref_, 1});
     torch::Tensor uref = torch::tensor(latest_uref_.data, torch::kFloat32).view({1, input_dims_uref_, 1});
+    
+    // Publish x, xref, and uref
+    torch::Tensor x_ten = x;
+    torch::Tensor xref_ten = xref;
+    torch::Tensor uref_ten = uref; 
+    x_ten = x_ten.contiguous();
+    xref_ten = xref_ten.contiguous();
+    uref_ten = uref_ten.contiguous();
+
+    std_msgs::msg::Float32MultiArray x_msg;
+    std_msgs::msg::Float32MultiArray xref_msg;
+    std_msgs::msg::Float32MultiArray uref_msg;
+    const float* data_x = x_ten.data_ptr<float>();
+    const float* data_xref = xref_ten.data_ptr<float>();
+    const float* data_uref = uref_ten.data_ptr<float>();
+
+    x_msg.data.resize(x_ten.numel());
+    for (int i = 0; i < x_ten.numel(); ++i) {
+        x_msg.data[i] = data_x[i];
+    }
+    xref_msg.data.resize(xref_ten.numel());
+    for (int i = 0; i < xref_ten.numel(); ++i) {
+        xref_msg.data[i] = data_xref[i];
+    }
+    uref_msg.data.resize(uref_ten.numel());
+    for (int i = 0; i < uref_ten.numel(); ++i) {
+        uref_msg.data[i] = data_uref[i];
+    }
+    x_pub_->publish(x_msg);
+    xref_pub_->publish(xref_msg);
+    uref_pub_->publish(uref_msg);
+
 
     // Move to CUDA if needed
     if (device_type_ == torch::kCUDA) {
@@ -313,30 +347,14 @@ std::vector<torch::jit::IValue> TorchModelLoader::PackInputs(const nav_msgs::msg
         uref = uref.to(torch::kCUDA);
     }
 
-    // RCLCPP_INFO(this->get_logger(), "Converted input message to tensors");
-
-    // Publish x as current state
-    torch::Tensor x_ten = x;
-    if (x_ten.device().is_cuda()) {
-        x_ten = x_ten.to(torch::kCPU);
-    }
-    x_ten = x_ten.contiguous();
-
-    std_msgs::msg::Float32MultiArray x_msg;
-    const float* data = x_ten.data_ptr<float>();
-
-    x_msg.data.resize(x_ten.numel());
-    for (int i = 0; i < x_ten.numel(); ++i) {
-        x_msg.data[i] = data[i];
-    }
-    x_pub_->publish(x_msg);
-
     // Return as a vector for forward()
     return {x, xref, uref};
 }
 
 
 void TorchModelLoader::TimerCallback(){
+
+    auto callback_start = this->now();
 
     if (load_successful_)
     {    
@@ -357,6 +375,9 @@ void TorchModelLoader::TimerCallback(){
     
     // Publish the output message
     output_pub_->publish(output_msg);
+    
+    auto callback_end = this->now();
+    // RCLCPP_INFO(this->get_logger(), "dt = %f", (callback_end - callback_start).seconds());
 
     } else 
     {

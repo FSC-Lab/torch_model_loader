@@ -75,6 +75,8 @@ private:
     rclcpp::Subscription<std_msgs::msg::Bool>::SharedPtr CCM_activated_sub_;
     rclcpp::Publisher<std_msgs::msg::Float32MultiArray>::SharedPtr output_pub_;
     rclcpp::Publisher<std_msgs::msg::Float32MultiArray>::SharedPtr x_pub_;
+    rclcpp::Publisher<std_msgs::msg::Float32MultiArray>::SharedPtr xref_pub_;
+    rclcpp::Publisher<std_msgs::msg::Float32MultiArray>::SharedPtr uref_pub_;
 
     void TimerCallback();
 
